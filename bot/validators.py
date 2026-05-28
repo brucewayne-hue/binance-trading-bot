@@ -21,3 +21,33 @@ def validate_inputs(symbol: str, side: str, order_type: str, quantity: float, pr
         raise ValueError("Limit parameters incomplete: Missing execution price floor target.")
 
     return symbol, side, order_type, quantity, price
+
+
+def validate_order_params(params: dict):
+    """
+    Backwards-compatible validator used by `bot.cli`.
+    Normalizes values and raises ValueError on invalid input.
+    """
+
+    symbol = params.get("symbol", "BTCUSDT")
+    side = params.get("side", "BUY")
+    order_type = params.get("type", "MARKET")
+    quantity = params.get("quantity", 0.01)
+    price = params.get("price", None)
+
+    symbol, side, order_type, quantity, price = validate_inputs(
+        symbol=str(symbol),
+        side=str(side),
+        order_type=str(order_type),
+        quantity=float(quantity),
+        price=float(price) if price is not None else None,
+    )
+
+    params["symbol"] = symbol
+    params["side"] = side
+    params["type"] = order_type
+    params["quantity"] = quantity
+    if price is not None:
+        params["price"] = price
+
+    return params

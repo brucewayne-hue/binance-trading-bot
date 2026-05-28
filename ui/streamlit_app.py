@@ -1,12 +1,10 @@
-import json
 import os
 from datetime import datetime
 
 import streamlit as st
 
-from bot.client import get_binance_client
 from bot.logging_config import logger
-from bot.validators import validate_inputs
+from bot.service import execute_order
 
 
 def _project_root() -> str:
@@ -30,40 +28,21 @@ def _read_log_tail(max_bytes: int = 50_000) -> str:
 
 
 def _place_order(symbol: str, side: str, order_type: str, quantity: float, price: float | None):
-    symbol, side, order_type, quantity, price = validate_inputs(
+    return execute_order(
         symbol=symbol,
         side=side,
         order_type=order_type,
         quantity=quantity,
         price=price,
     )
-    params: dict[str, str] = {
-        "symbol": symbol,
-        "side": side,
-        "type": order_type,
-        "quantity": str(quantity),
-    }
-    if order_type == "LIMIT":
-        if price is None:
-            raise ValueError("Missing limit price.")
-        params["price"] = str(price)
-        params["timeInForce"] = "GTC"
-
-    logger.info(
-        "UI ORDER -> Asset: %s | Side: %s | Type: %s | Qty: %s | Price: %s",
-        symbol,
-        side,
-        order_type,
-        quantity,
-        price,
-    )
-    client = get_binance_client()
-    return client.send_futures_order(params)
 
 
 st.set_page_config(page_title="Trading Bot UI", page_icon="📈", layout="wide")
 st.title("Trading Bot UI")
 st.caption("Local UI for the existing bot modules (mock Binance testnet client).")
+
+if "last_order" not in st.session_state:
+    st.session_state["last_order"] = None
 
 with st.sidebar:
     st.subheader("Order parameters")
@@ -75,7 +54,14 @@ with st.sidebar:
     if order_type == "LIMIT":
         price = st.number_input("Limit price", min_value=0.0, value=75000.0, step=10.0, format="%.2f")
 
-    submitted = st.button("Place order", type="primary", use_container_width=True)
+    st.divider()
+    col_a, col_b = st.columns(2)
+    with col_a:
+        submitted = st.button("Place order", type="primary", use_container_width=True)
+    with col_b:
+        if st.button("Load example", use_container_width=True):
+            st.session_state["example_loaded_at"] = datetime.now().isoformat()
+            st.rerun()
 
 col1, col2 = st.columns([1, 1], gap="large")
 
@@ -84,13 +70,18 @@ with col1:
     if submitted:
         try:
             resp = _place_order(symbol, side, order_type, float(quantity), float(price) if price is not None else None)
+            st.session_state["last_order"] = resp
             st.success("Order sent.")
             st.json(resp)
         except Exception as e:
             logger.exception("UI error while placing order")
             st.error(str(e))
     else:
-        st.info("Fill order parameters and click **Place order**.")
+        if st.session_state["last_order"] is not None:
+            st.info("Last order response:")
+            st.json(st.session_state["last_order"])
+        else:
+            st.info("Fill order parameters and click **Place order**.")
 
 with col2:
     st.subheader("Logs (tail)")

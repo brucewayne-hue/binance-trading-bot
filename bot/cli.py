@@ -1,8 +1,8 @@
 import sys
 import argparse
 import bot.validators as validators
-from bot.client import get_binance_client
 from bot.logging_config import logger
+from bot.service import execute_order
 
 def print_success_card(order_data):
     """Prints a highly visible, beautifully formatted trade execution card."""
@@ -95,15 +95,15 @@ def main():
         logger.info(f"OUTBOUND REQUEST -> Asset: {params.get('symbol')} | Side: {params.get('side')} | Type: {params.get('type')} | Qty: {params.get('quantity')} | Price: {params.get('price')}")
         
         # Enforce validation schemas
-        # This automatically runs whatever validation function you wrote inside validators.py
-        if hasattr(validators, 'validate_order_params'):
-            validators.validate_order_params(params)
-        elif hasattr(validators, 'validate_order'):
-            validators.validate_order(params)
+        validators.validate_order_params(params)
         
-        # Initialize test engine client framework 
-        client = get_binance_client()
-        response = client.send_futures_order(params)
+        response = execute_order(
+            symbol=params.get("symbol"),
+            side=params.get("side"),
+            order_type=params.get("type"),
+            quantity=params.get("quantity"),
+            price=params.get("price"),
+        )
         
         if "orderId" in response:
             logger.info(f"INBOUND COMPLIANCE MATCH -> OrderID: {response['orderId']} | Status: {response['status']}")

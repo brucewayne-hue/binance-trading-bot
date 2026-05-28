@@ -1,25 +1,15 @@
 from bot.logging_config import logger
-from bot.client import get_binance_client
+from bot.service import execute_order
 
 def place_futures_order(symbol: str, side: str, order_type: str, quantity: float, price: float = None):
     try:
-        client = get_binance_client()
-        
-        logger.info(f"OUTBOUND REQUEST -> Asset: {symbol} | Side: {side} | Type: {order_type} | Qty: {quantity} | Price: {price}")
-        
-        params = {
-            "symbol": symbol,
-            "side": side,
-            "type": order_type,
-            "quantity": str(quantity)
-        }
-        
-        if order_type == "LIMIT":
-            params["price"] = str(price)
-            params["timeInForce"] = "GTC"
-
-        # Direct REST call execution
-        response = client.send_futures_order(params)
+        response = execute_order(
+            symbol=symbol,
+            side=side,
+            order_type=order_type,
+            quantity=quantity,
+            price=price,
+        )
         
         # Catch exchange side credential or format blocks
         if "code" in response and "msg" in response:

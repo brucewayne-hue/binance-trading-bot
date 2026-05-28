@@ -1,19 +1,27 @@
 import json
+from json import JSONDecodeError
 from http.server import BaseHTTPRequestHandler
 
-from bot.client import get_binance_client
 from bot.logging_config import logger
-from bot.validators import validate_inputs
+from bot.service import execute_order
+
+
+MAX_BODY_BYTES = 10_000
 
 
 def _read_json_body(req: BaseHTTPRequestHandler) -> dict:
     length = int(req.headers.get("content-length", "0") or "0")
     if length <= 0:
         return {}
+    if length > MAX_BODY_BYTES:
+        raise ValueError(f"Request too large (max {MAX_BODY_BYTES} bytes).")
     raw = req.rfile.read(length)
     if not raw:
         return {}
-    return json.loads(raw.decode("utf-8"))
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except JSONDecodeError:
+        raise ValueError("Invalid JSON body.")
 
 
 class handler(BaseHTTPRequestHandler):
@@ -62,6 +70,10 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            content_type = (self.headers.get("content-type") or "").lower()
+            if content_type and "application/json" not in content_type:
+                raise ValueError("Content-Type must be application/json.")
+
             data = _read_json_body(self)
             symbol = str(data.get("symbol", "BTCUSDT"))
             side = str(data.get("side", "BUY"))
@@ -70,7 +82,7 @@ class handler(BaseHTTPRequestHandler):
             price = data.get("price", None)
             price_f = float(price) if price is not None else None
 
-            symbol, side, order_type, quantity, price_f = validate_inputs(
+            resp = execute_order(
                 symbol=symbol,
                 side=side,
                 order_type=order_type,
@@ -78,29 +90,13 @@ class handler(BaseHTTPRequestHandler):
                 price=price_f,
             )
 
-            params: dict[str, str] = {
-                "symbol": symbol,
-                "side": side,
-                "type": order_type,
-                "quantity": str(quantity),
-            }
-            if order_type == "LIMIT":
-                if price_f is None:
-                    raise ValueError("Missing limit price.")
-                params["price"] = str(price_f)
-                params["timeInForce"] = "GTC"
-
-            logger.info(
-                "API ORDER -> Asset: %s | Side: %s | Type: %s | Qty: %s | Price: %s",
-                symbol,
-                side,
-                order_type,
-                quantity,
-                price_f,
-            )
-            client = get_binance_client()
-            resp = client.send_futures_order(params)
             self._send_json(200, {"ok": True, "order": resp})
         except Exception as e:
             logger.exception("API error while placing order")
             self._send_json(400, {"ok": False, "error": str(e)})
+
+    def do_PUT(self):
+        self._send_json(405, {"ok": False, "error": "Method not allowed."})
+
+    def do_DELETE(self):
+        self._send_json(405, {"ok": False, "error": "Method not allowed."})

@@ -141,3 +141,10 @@ Example request body:
   "quantity": 0.01
 }
 ```
+
+---
+
+## Notes (recommended)
+
+- The `.env` file should **not** be committed (now ignored via `.gitignore`).
+- Logs are written to `logs/trading_bot.log` (also ignored via `.gitignore`).
