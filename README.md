@@ -52,12 +52,92 @@ You can execute the interface using either standard raw command line parameters 
 
 1. Interactive Menu Wizard (Recommended / Bonus Mode)
 Simply run the script with no arguments to trigger the interactive prompts:
+
+**PowerShell (Windows):**
+
+```bash
+$env:PYTHONPATH='.'; python -m bot.cli
+```
+
+**macOS/Linux:**
+
+```bash
 PYTHONPATH=. python -m bot.cli
+```
 
 2. Market Order Example (Direct CLI)
 Dispatches an immediate request execution against current market liquidity:
+
+**PowerShell (Windows):**
+
+```bash
+$env:PYTHONPATH='.'; python -m bot.cli --symbol BTCUSDT --side BUY --type MARKET --quantity 0.01
+```
+
+**macOS/Linux:**
+
+```bash
 PYTHONPATH=. python -m bot.cli --symbol BTCUSDT --side BUY --type MARKET --quantity 0.01
+```
 
 3. Limit Order Example (Direct CLI)
 Places a constraint-driven order targeted at a specific price floor threshold:
+
+**PowerShell (Windows):**
+
+```bash
+$env:PYTHONPATH='.'; python -m bot.cli --symbol BTCUSDT --side SELL --type LIMIT --quantity 0.01 --price 75000
+```
+
+**macOS/Linux:**
+
+```bash
 PYTHONPATH=. python -m bot.cli --symbol BTCUSDT --side SELL --type LIMIT --quantity 0.01 --price 75000
+```
+
+---
+
+## Streamlit UI (Local)
+
+1. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Run the UI:
+
+**PowerShell (Windows):**
+
+```bash
+$env:PYTHONPATH='.'; streamlit run ui/streamlit_app.py
+```
+
+**macOS/Linux:**
+
+```bash
+PYTHONPATH=. streamlit run ui/streamlit_app.py
+```
+
+This UI lets you place mock testnet orders and view `logs/trading_bot.log` live.
+
+---
+
+## Vercel (HTTP API)
+
+This repo includes Vercel-compatible Python Functions under `api/`:
+
+- `GET /api/health`
+- `GET /api/order` (usage)
+- `POST /api/order` (place order)
+
+Example request body:
+
+```json
+{
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "type": "MARKET",
+  "quantity": 0.01
+}
+```
